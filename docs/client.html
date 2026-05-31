@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Client Dashboard - TechRescue</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="app.js"></script>
+    <script>
+      const auth = requireAuth("client");
+      document.body.innerHTML = clientShell("dashboard", `
+        <div class="page-title"><h1>Dashboard</h1><p>Track your TechRescue tickets and recent activity.</p></div>
+        <section class="metrics">
+          <div class="metric"><strong id="totalCount">0</strong><span>Total Queries</span></div>
+          <div class="metric"><strong id="openCount">0</strong><span>Open Queries</span></div>
+          <div class="metric"><strong id="inProgressCount">0</strong><span>In Progress</span></div>
+          <div class="metric"><strong id="resolvedCount">0</strong><span>Resolved</span></div>
+        </section>
+        <section class="layout-two">
+          <div class="card"><h3>Query Overview</h3><canvas id="overviewChart" height="180"></canvas></div>
+          <div class="table-card"><table><thead><tr><th>ID</th><th>Title</th><th>Status</th><th>Date</th></tr></thead><tbody id="recentQueriesBody"></tbody></table></div>
+        </section>
+        <p id="dashMsg" class="message"></p>
+      `);
+      loadCurrentUser();
+
+      async function loadClientDashboard() {
+        try {
+          const data = await apiFetch("/client-dashboard");
+          qs("#totalCount").textContent = data.total || 0;
+          qs("#openCount").textContent = data.open || 0;
+          qs("#inProgressCount").textContent = data.inProgress || 0;
+          qs("#resolvedCount").textContent = data.resolved || 0;
+
+          new Chart(qs("#overviewChart"), {
+            type: "doughnut",
+            data: {
+              labels: ["Open", "In Progress", "Resolved"],
+              datasets: [{ data: [data.open || 0, data.inProgress || 0, data.resolved || 0], backgroundColor: ["#f0a63a", "#0e7c73", "#12b76a"] }]
+            },
+            options: { plugins: { legend: { position: "bottom" } } }
+          });
+
+          qs("#recentQueriesBody").innerHTML = (data.recent || []).map((q) => `
+            <tr><td>${escapeHtml(q.ticket_number || "-")}</td><td>${escapeHtml(q.short_description || "-")}</td><td><span class="status ${statusClass(q.status)}">${escapeHtml(q.status || "-")}</span></td><td>${formatDate(q.created_at)}</td></tr>
+          `).join("") || `<tr><td colspan="4">No recent queries.</td></tr>`;
+        } catch (error) {
+          setMessage("dashMsg", error.message, "error");
+        }
+      }
+
+      if (auth) loadClientDashboard();
+    </script>
+  </body>
+</html>

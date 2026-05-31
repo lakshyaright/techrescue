@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Align Experts - TechRescue</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <script src="app.js"></script>
+    <script>
+      requireAuth("client");
+      document.body.innerHTML = clientShell("experts", `
+        <div class="page-title"><h1>Align Experts</h1><p>Search verified remote experts by name, category, location, and availability.</p></div>
+        <section class="filter-bar">
+          <label>Search <input id="searchInput" placeholder="Search by name" /></label>
+          <label>Category <select id="categoryFilter"><option value="">All Categories</option><option>Network</option><option>Cloud</option><option>Hardware</option><option>Security</option></select></label>
+          <label>Location <select id="locationFilter"><option value="">All Locations</option><option>India</option><option>USA</option></select></label>
+          <label><span>Online only</span><input type="checkbox" id="onlineFilter" /></label>
+          <button class="button primary" onclick="loadExperts()">Apply</button>
+        </section>
+        <section id="expertsContainer" class="grid"></section>
+        <p id="pageMsg" class="message"></p>
+      `);
+      loadCurrentUser();
+
+      async function loadExperts() {
+        setMessage("pageMsg", "Loading experts...");
+        const query = new URLSearchParams({
+          search: qs("#searchInput").value,
+          category: qs("#categoryFilter").value,
+          location: qs("#locationFilter").value,
+          online: qs("#onlineFilter").checked
+        });
+        try {
+          const experts = await apiFetch("/experts?" + query.toString(), { headers: {} });
+          qs("#expertsContainer").innerHTML = (experts || []).map((expert) => {
+            const profile = expert.engineer_profiles?.[0] || {};
+            return `<article class="card"><h3>${escapeHtml(expert.first_name || "")} ${escapeHtml(expert.last_name || "")}</h3><p>${escapeHtml(expert.email || "")}</p><p>${escapeHtml(expert.country || "")} ${escapeHtml(expert.state || "")}</p><p>Role: ${escapeHtml(profile.role || "Not defined")}</p><p>Categories: ${escapeHtml((profile.categories || []).join(", ") || "Not listed")}</p><span class="status ${expert.online ? "resolved" : "offline"}">${expert.online ? "Online" : "Offline"}</span></article>`;
+          }).join("") || `<p>No experts found.</p>`;
+          setMessage("pageMsg", "");
+        } catch (error) {
+          setMessage("pageMsg", error.message, "error");
+        }
+      }
+      loadExperts();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TechRescue - Connect with Tech Experts</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="landing-page">
+    <main>
+      <section class="landing-hero">
+        <img class="landing-hero-image" src="assets/techrescue-hero.jpg" alt="Technician repairing a laptop and phone" />
+        <div class="landing-hero-overlay"></div>
+        <div class="landing-hero-content">
+          <p class="eyebrow">On-demand IT help for clients and experts</p>
+          <h1>TechRescue</h1>
+          <p>
+            Raise tech issues, connect with verified experts, track ticket progress,
+            and manage remote or field support from one clean workspace.
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href="Signup.html">Create account</a>
+            <a class="button secondary" href="Login.html">Log in</a>
+          </div>
+          <dl class="landing-stats" aria-label="Platform highlights">
+            <div>
+              <dt>24/7</dt>
+              <dd>urgent support</dd>
+            </div>
+            <div>
+              <dt>Live</dt>
+              <dd>ticket tracking</dd>
+            </div>
+            <div>
+              <dt>2-way</dt>
+              <dd>client and expert portals</dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      <section class="trust-strip" aria-label="Popular support categories">
+        <span>Remote IT support</span>
+        <span>Field engineers</span>
+        <span>Ticket history</span>
+        <span>Expert alerts</span>
+        <span>Secure accounts</span>
+      </section>
+
+      <section class="section">
+        <div class="section-heading">
+          <p class="eyebrow">What you can do</p>
+          <h2>Built for clients and experts</h2>
+          <p>One workflow for urgent tech support, expert discovery, ticket history, and engineer profiles.</p>
+        </div>
+        <div class="grid">
+          <article class="card">
+            <span class="icon">01</span>
+            <h3>Client dashboard</h3>
+            <p>View open, in-progress, and resolved queries with recent ticket activity.</p>
+          </article>
+          <article class="card">
+            <span class="icon">02</span>
+            <h3>Expert alerts</h3>
+            <p>Experts can respond to tickets, update status, and manage their availability.</p>
+          </article>
+          <article class="card">
+            <span class="icon">03</span>
+            <h3>Field support</h3>
+            <p>Find engineers by location, skills, and online availability for on-site work.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="landing-band">
+        <div>
+          <p class="eyebrow">Simple process</p>
+          <h2>From issue to resolution without losing context</h2>
+          <p>
+            Clients raise structured tickets. Experts receive alerts, accept work,
+            resolve tickets, and keep the complete service history available.
+          </p>
+        </div>
+        <div class="process-list">
+          <div><span>1</span><h3>Raise query</h3><p>Describe category, urgency, impact, and details.</p></div>
+          <div><span>2</span><h3>Align expert</h3><p>Search remote or field engineers by skills and location.</p></div>
+          <div><span>3</span><h3>Track and close</h3><p>Monitor status, chat, resolve, and export records.</p></div>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+    <script>
+      renderPublicHeader("index.html");
+      renderFooter();
+    </script>
+  </body>
+</html>

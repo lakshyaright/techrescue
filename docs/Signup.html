@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Signup - TechRescue</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="auth-page">
+    <section class="auth-card">
+      <a class="brand" href="index.html"><span class="brand-mark">TR</span><span>TechRescue</span></a>
+      <h1>Create account</h1>
+      <div class="tabs">
+        <button class="tab active" type="button" data-role-tab="client">Client</button>
+        <button class="tab" type="button" data-role-tab="expert">Expert</button>
+      </div>
+      <form id="signupForm">
+        <input type="hidden" id="role" value="client" />
+        <div class="field-grid">
+          <label>First name <input id="firstName" required /></label>
+          <label>Last name <input id="lastName" required /></label>
+        </div>
+        <label>Email <input id="email" type="email" autocomplete="email" required /></label>
+        <label>Password <input id="password" type="password" autocomplete="new-password" required /></label>
+        <div id="expertFields" class="hidden field-grid">
+          <label>Country
+            <select id="country">
+              <option value="">Select Country</option>
+              <option>India</option><option>USA</option><option>UK</option><option>Canada</option><option>Australia</option>
+            </select>
+          </label>
+          <label>State
+            <select id="state">
+              <option value="">Select State</option>
+              <option>Uttar Pradesh</option><option>Delhi</option><option>Haryana</option><option>Maharashtra</option>
+            </select>
+          </label>
+        </div>
+        <button class="button primary" type="submit">Create Account</button>
+      </form>
+      <p id="message" class="message"></p>
+      <p>Already registered? <a href="Login.html">Log in</a></p>
+    </section>
+
+    <script src="app.js"></script>
+    <script>
+      qsa("[data-role-tab]").forEach((tab) => {
+        tab.addEventListener("click", () => {
+          qsa("[data-role-tab]").forEach((item) => item.classList.remove("active"));
+          tab.classList.add("active");
+          qs("#role").value = tab.dataset.roleTab;
+          qs("#expertFields").classList.toggle("hidden", tab.dataset.roleTab !== "expert");
+        });
+      });
+
+      qs("#signupForm").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const role = qs("#role").value;
+        setMessage("message", "Creating account...");
+        try {
+          await apiFetch("/signup", {
+            method: "POST",
+            body: JSON.stringify({
+              first_name: qs("#firstName").value.trim(),
+              last_name: qs("#lastName").value.trim(),
+              email: qs("#email").value.trim(),
+              password: qs("#password").value,
+              role,
+              country: role === "expert" ? qs("#country").value : null,
+              state: role === "expert" ? qs("#state").value : null
+            })
+          });
+          setMessage("message", "Account created. Redirecting to login...", "success");
+          setTimeout(() => (window.location.href = "Login.html"), 900);
+        } catch (error) {
+          setMessage("message", error.message, "error");
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chat - TechRescue</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="chat-shell">
+      <aside class="chat-side">
+        <a class="brand" href="index.html"><span class="brand-mark">TR</span><span>TechRescue</span></a>
+        <p class="eyebrow" style="margin-top:32px">Ticket conversation</p>
+        <h1>Stay aligned while the issue moves.</h1>
+        <p>Use ticket chat to coordinate details, share updates, and keep client/expert context in one place.</p>
+      </aside>
+
+      <section class="chat-main">
+        <header class="chat-header">
+          <a class="button secondary" href="alerts.html">Back to alerts</a>
+          <h1>Ticket Chat</h1>
+          <p id="ticketLabel"></p>
+        </header>
+
+        <div id="chatBox" class="chat-box">
+          <div class="chat-bubble">
+            <strong>TechRescue</strong>
+            <p>No messages loaded yet. Send the first update to start the conversation.</p>
+          </div>
+        </div>
+
+        <form id="chatForm" class="chat-form">
+          <label>Receiver ID <input id="receiver" required /></label>
+          <label>Message <input id="msg" required placeholder="Type a clear update..." /></label>
+          <button class="button primary" type="submit">Send</button>
+          <p id="chatMsg" class="message"></p>
+        </form>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+    <script>
+      requireAuth();
+      const ticket = new URLSearchParams(location.search).get("ticket");
+      qs("#ticketLabel").textContent = ticket ? "Ticket: " + ticket : "Direct message";
+
+      qs("#chatForm").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const message = qs("#msg").value.trim();
+        const receiver_id = qs("#receiver").value.trim();
+        if (!message || !receiver_id) return;
+
+        try {
+          await apiFetch("/send-message", {
+            method: "POST",
+            body: JSON.stringify({ receiver_id, message })
+          });
+          qs("#chatBox").insertAdjacentHTML("beforeend", `<div class="chat-bubble self"><strong>You</strong><p>${escapeHtml(message)}</p></div>`);
+          qs("#msg").value = "";
+          setMessage("chatMsg", "Message sent.", "success");
+        } catch (error) {
+          setMessage("chatMsg", error.message, "error");
+        }
+      });
+    </script>
+  </body>
+</html>

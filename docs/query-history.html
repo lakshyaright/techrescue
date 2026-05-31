@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Query History - TechRescue</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="app.js"></script>
+    <script>
+      requireAuth("client");
+      let globalQueries = [];
+      document.body.innerHTML = clientShell("history", `
+        <div class="page-title"><h1>Query History</h1><p>Search tickets, view details, and export service slips.</p></div>
+        <section class="filter-bar"><label>Search <input id="searchInput" placeholder="Search queries" oninput="applySearch()" /></label></section>
+        <section class="table-card"><table><thead><tr><th>Query ID</th><th>Title</th><th>Category</th><th>Status</th><th>Created</th><th>Action</th></tr></thead><tbody id="queryTable"></tbody></table></section>
+        <p id="pageMsg" class="message"></p>
+      `);
+      loadCurrentUser();
+
+      async function loadQueryHistory() {
+        try {
+          globalQueries = await apiFetch("/query-history");
+          qs("#queryTable").innerHTML = (globalQueries || []).map((q, index) => `
+            <tr><td>${escapeHtml(q.ticket_number || "-")}</td><td>${escapeHtml(q.short_description || "-")}</td><td>${escapeHtml(q.category || "-")}</td><td><span class="status ${statusClass(q.status)}">${escapeHtml(q.status || "-")}</span></td><td>${formatDate(q.created_at)}</td><td><button class="button secondary" onclick="downloadPDF(${index})">PDF</button></td></tr>
+          `).join("") || `<tr><td colspan="6">No queries found.</td></tr>`;
+        } catch (error) {
+          setMessage("pageMsg", error.message, "error");
+        }
+      }
+
+      function applySearch() {
+        const text = qs("#searchInput").value.toLowerCase();
+        qsa("#queryTable tr").forEach((row) => {
+          row.style.display = row.innerText.toLowerCase().includes(text) ? "" : "none";
+        });
+      }
+
+      function downloadPDF(index) {
+        const q = globalQueries[index];
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        doc.setFontSize(16);
+        doc.text("Electronic Service Slip", 20, 25);
+        doc.setFontSize(11);
+        doc.text("Ticket ID: " + (q.ticket_number || "-"), 20, 45);
+        doc.text("Category: " + (q.category || "-"), 20, 55);
+        doc.text("Status: " + (q.status || "-"), 20, 65);
+        doc.text("Created: " + formatDate(q.created_at), 20, 75);
+        doc.text("Description:", 20, 95);
+        doc.text(q.detailed_description || "No description provided", 20, 105, { maxWidth: 170 });
+        doc.save((q.ticket_number || "ticket") + ".pdf");
+      }
+
+      loadQueryHistory();
+    </script>
+  </body>
+</html>

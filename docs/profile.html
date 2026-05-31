@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Profile - TechRescue</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <script src="app.js"></script>
+    <script>
+      requireAuth("expert");
+      document.body.innerHTML = expertShell("profile", `
+        <div class="page-title"><h1>Engineer Profile</h1><p>Keep skills, role, and professional summary current.</p></div>
+        <form class="form-card" id="profileForm">
+          <label>Skill Categories <input id="categories" placeholder="IT & Networking, Cloud" /></label>
+          <label>Sub Skills <input id="subskills" placeholder="Windows Server, Networking" /></label>
+          <label>Role Type <select id="role"><option value="">Select Role</option><option>Field Engineer</option><option>Server Engineer</option><option>Cloud Engineer</option><option>Network Engineer</option></select></label>
+          <label>Experience <input id="experience" placeholder="5 years" /></label>
+          <label>Education <input id="education" placeholder="B.Tech, certifications, diploma" /></label>
+          <label>Professional Summary <textarea id="summary"></textarea></label>
+          <button class="button primary" type="submit">Save Profile</button>
+          <p id="msg" class="message"></p>
+        </form>
+      `);
+      loadCurrentUser();
+
+      async function loadProfile() {
+        try {
+          const data = await apiFetch("/profile");
+          if (!data) return;
+          qs("#categories").value = (data.categories || []).join(", ");
+          qs("#subskills").value = (data.subskills || []).join(", ");
+          qs("#role").value = data.role || "";
+          qs("#experience").value = data.experience || "";
+          qs("#education").value = data.education || "";
+          qs("#summary").value = data.summary || "";
+        } catch (error) {
+          setMessage("msg", error.message, "error");
+        }
+      }
+
+      qs("#profileForm").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        try {
+          await apiFetch("/save-profile", {
+            method: "POST",
+            body: JSON.stringify({
+              categories: qs("#categories").value.split(",").map((x) => x.trim()).filter(Boolean),
+              subskills: qs("#subskills").value.split(",").map((x) => x.trim()).filter(Boolean),
+              manualSkills: "",
+              role: qs("#role").value,
+              experience: qs("#experience").value,
+              education: qs("#education").value,
+              summary: qs("#summary").value
+            })
+          });
+          setMessage("msg", "Profile saved successfully.", "success");
+        } catch (error) {
+          setMessage("msg", error.message, "error");
+        }
+      });
+
+      loadProfile();
+    </script>
+  </body>
+</html>

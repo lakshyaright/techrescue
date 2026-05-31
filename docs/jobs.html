@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jobs - TechRescue</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <script src="app.js"></script>
+    <script>
+      requireAuth("expert");
+      document.body.innerHTML = expertShell("jobs", `
+        <div class="page-title"><h1>Jobs</h1><p>Static job examples until the backend job endpoint is connected.</p></div>
+        <section class="grid">
+          <article class="card"><h3>Branch Office Router Issue</h3><p>Client: ABC Pvt Ltd | Delhi</p><span class="status pending">Pending</span></article>
+          <article class="card"><h3>Office 365 Setup</h3><p>Client: StartupX | Remote</p><span class="status in-progress">In Progress</span></article>
+          <article class="card"><h3>Firewall Configuration</h3><p>Client: SecureTech | Mumbai</p><span class="status completed">Completed</span></article>
+        </section>
+      `);
+      loadCurrentUser();
+    </script>
+  </body>
+</html>

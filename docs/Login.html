@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - TechRescue</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="auth-page">
+    <section class="auth-card">
+      <a class="brand" href="index.html"><span class="brand-mark">TR</span><span>TechRescue</span></a>
+      <h1>Log in</h1>
+      <div class="tabs" role="tablist">
+        <button class="tab active" type="button" data-role-tab="client">Client</button>
+        <button class="tab" type="button" data-role-tab="expert">Expert</button>
+      </div>
+      <form id="loginForm">
+        <input type="hidden" id="role" value="client" />
+        <label>Email <input id="email" type="email" autocomplete="email" required /></label>
+        <label>Password <input id="password" type="password" autocomplete="current-password" required /></label>
+        <button class="button primary" type="submit">Log In</button>
+      </form>
+      <p id="msg" class="message"></p>
+      <p>New here? <a href="Signup.html">Create an account</a></p>
+    </section>
+
+    <script src="app.js"></script>
+    <script>
+      qsa("[data-role-tab]").forEach((tab) => {
+        tab.addEventListener("click", () => {
+          qsa("[data-role-tab]").forEach((item) => item.classList.remove("active"));
+          tab.classList.add("active");
+          qs("#role").value = tab.dataset.roleTab;
+        });
+      });
+
+      qs("#loginForm").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        setMessage("msg", "Signing in...");
+        try {
+          const data = await apiFetch("/login", {
+            method: "POST",
+            body: JSON.stringify({
+              email: qs("#email").value.trim(),
+              password: qs("#password").value,
+              role: qs("#role").value
+            })
+          });
+
+          localStorage.setItem("token", data.token);
+          window.location.href = data.role === "expert" ? "Expert.html" : "client.html";
+        } catch (error) {
+          setMessage("msg", error.message, "error");
+        }
+      });
+    </script>
+  </body>
+</html>

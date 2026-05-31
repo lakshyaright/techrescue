@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Raise Query - TechRescue</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <script src="app.js"></script>
+    <script>
+      const auth = requireAuth("client");
+      document.body.innerHTML = clientShell("raise", `
+        <div class="page-title"><h1>Raise Query</h1><p>Create a ticket with clear impact, urgency, and support category.</p></div>
+        <form class="form-card" id="raiseForm">
+          <label>Short Description <input id="short_description" required placeholder="Outlook not opening, error code 0x80040154" /></label>
+          <div class="field-grid">
+            <label>Category <select id="category" required><option value="">Select Category</option><option>Hardware</option><option>Software</option><option>Application</option><option>Network</option><option>Security</option><option>Cloud</option></select></label>
+            <label>Subcategory <select id="subcategory" required><option value="">Select Subcategory</option><option>Outlook</option><option>Excel</option><option>Word</option><option>Teams</option><option>Chrome</option><option>Edge</option><option>Tally ERP9</option><option>Router</option><option>Firewall</option></select></label>
+            <label>Impact <select id="impact" required><option value="">Select Impact</option><option>Single User</option><option>Multiple Users</option><option>Organization</option></select></label>
+            <label>Urgency <select id="urgency" required><option value="">Select Urgency</option><option>Low</option><option>Medium</option><option>High</option></select></label>
+          </div>
+          <label>Detailed Description <textarea id="detailed_description" placeholder="Explain issue, troubleshooting already tried, screenshots, error messages, and affected users."></textarea></label>
+          <label>Assignment Group <select id="assignment_group"><option>Application Support</option><option>Network Support</option><option>Email Support</option><option>Cloud Support</option></select></label>
+          <button class="button primary" type="submit">Submit Ticket</button>
+          <p id="formMsg" class="message"></p>
+        </form>
+      `);
+      loadCurrentUser();
+
+      qs("#raiseForm").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        setMessage("formMsg", "Submitting ticket...");
+        try {
+          const result = await apiFetch("/raise-query", {
+            method: "POST",
+            body: JSON.stringify({
+              category: qs("#category").value,
+              subcategory: qs("#subcategory").value,
+              impact: qs("#impact").value,
+              urgency: qs("#urgency").value,
+              short_description: qs("#short_description").value,
+              detailed_description: qs("#detailed_description").value,
+              assignment_group: qs("#assignment_group").value
+            })
+          });
+          setMessage("formMsg", "Ticket created: " + result.ticket_number, "success");
+          setTimeout(() => (window.location.href = "client.html"), 900);
+        } catch (error) {
+          setMessage("formMsg", error.message, "error");
+        }
+      });
+    </script>
+  </body>
+</html>

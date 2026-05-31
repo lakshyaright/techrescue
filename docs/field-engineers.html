@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Field Engineers - TechRescue</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <script src="app.js"></script>
+    <script>
+      requireAuth("client");
+      document.body.innerHTML = clientShell("field", `
+        <div class="page-title"><h1>Field Engineers</h1><p>Find on-site engineers for branch, office, and hardware support.</p></div>
+        <section class="filter-bar">
+          <label>Search <input id="searchInput" placeholder="Search by name" /></label>
+          <label>Location <select id="locationFilter"><option value="">All Locations</option><option>Mumbai</option><option>Pune</option><option>Bengaluru</option><option>Delhi</option></select></label>
+          <label><span>Online only</span><input type="checkbox" id="onlineFilter" /></label>
+          <button class="button primary" onclick="loadEngineers()">Apply</button>
+        </section>
+        <section id="engineerContainer" class="grid"></section>
+        <p id="pageMsg" class="message"></p>
+      `);
+      loadCurrentUser();
+
+      async function loadEngineers() {
+        setMessage("pageMsg", "Loading field engineers...");
+        const query = new URLSearchParams({
+          search: qs("#searchInput").value,
+          location: qs("#locationFilter").value,
+          online: qs("#onlineFilter").checked
+        });
+        try {
+          const engineers = await apiFetch("/field-engineers?" + query.toString());
+          qs("#engineerContainer").innerHTML = (engineers || []).map((engineer) => {
+            const profile = engineer.engineer_profiles?.[0] || {};
+            return `<article class="card"><h3>${escapeHtml(engineer.first_name || "")} ${escapeHtml(engineer.last_name || "")}</h3><p>${escapeHtml(engineer.state || "")}, ${escapeHtml(engineer.country || "")}</p><p>Skills: ${escapeHtml((profile.categories || []).join(", ") || "Not listed")}</p><p>Experience: ${escapeHtml(profile.experience || "N/A")}</p><span class="status ${engineer.online ? "resolved" : "offline"}">${engineer.online ? "Available" : "Offline"}</span></article>`;
+          }).join("") || `<p>No field engineers found.</p>`;
+          setMessage("pageMsg", "");
+        } catch (error) {
+          setMessage("pageMsg", error.message, "error");
+        }
+      }
+      loadEngineers();
+    </script>
+  </body>
+</html>
