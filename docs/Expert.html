@@ -61,14 +61,28 @@
 
       async function respondToAlert(ticketNumber) {
         ticketNumber = decodeURIComponent(ticketNumber);
-        await apiFetch("/accept-ticket", { method: "POST", body: JSON.stringify({ ticket_number: ticketNumber }) });
-        loadAlerts();
+        if (!qs("#statusToggle").checked) {
+          setMessage("pageMsg", "Set your availability to Online before responding to a ticket.", "error");
+          return;
+        }
+        try {
+          await apiFetch("/accept-ticket", { method: "POST", body: JSON.stringify({ ticket_number: ticketNumber }) });
+          setMessage("pageMsg", `Ticket ${ticketNumber} accepted. Open the response form now.`, "success");
+          window.location.href = "alerts.html?ticket=" + encodeURIComponent(ticketNumber);
+        } catch (error) {
+          setMessage("pageMsg", error.message || "Unable to accept this ticket.", "error");
+        }
       }
 
       async function ignoreAlert(ticketNumber) {
         ticketNumber = decodeURIComponent(ticketNumber);
-        await apiFetch("/update-query-status", { method: "POST", body: JSON.stringify({ ticket_number: ticketNumber, status: "ignored" }) });
-        loadAlerts();
+        try {
+          await apiFetch("/update-query-status", { method: "POST", body: JSON.stringify({ ticket_number: ticketNumber, status: "ignored" }) });
+          setMessage("pageMsg", `Ticket ${ticketNumber} was ignored.`, "success");
+          loadAlerts();
+        } catch (error) {
+          setMessage("pageMsg", error.message || "Unable to ignore this ticket.", "error");
+        }
       }
 
       if (auth) {
