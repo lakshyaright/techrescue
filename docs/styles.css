@@ -333,6 +333,10 @@ body:not(.landing-page) .site-header {
   min-height: 100vh;
 }
 
+.shell-overlay {
+  display: none;
+}
+
 .sidebar {
   padding: 22px;
   border-right: 1px solid var(--line);
