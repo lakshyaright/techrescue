@@ -652,6 +652,14 @@ textarea {
   background: #fffaeb;
 }
 
+.ticket-response {
+  margin-top: 14px;
+}
+
+.ticket-response textarea {
+  min-height: 88px;
+}
+
 .chat-shell {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);

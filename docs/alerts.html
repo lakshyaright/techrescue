@@ -12,7 +12,7 @@
     <script>
       requireAuth("expert");
       document.body.innerHTML = expertShell("alerts", `
-        <div class="page-title"><h1>Alerts</h1><p>Resolve in-progress tickets and open chat for ticket conversations.</p></div>
+        <div class="page-title"><h1>Alerts</h1><p>Reply to assigned tickets and mark them resolved once the client has been helped.</p></div>
         <section class="metrics"><div class="metric"><strong id="inProgressCount">0</strong><span>In Progress</span></div><div class="metric"><strong id="resolvedCount">0</strong><span>Resolved</span></div></section>
         <section class="layout-two"><div class="card"><h3>In Progress Tickets</h3><div id="inProgressList" class="list"></div></div><div class="card"><h3>Resolved Tickets</h3><div id="resolvedList" class="list"></div></div></section>
         <p id="pageMsg" class="message"></p>
@@ -34,15 +34,27 @@
       }
 
       function renderTicketCards(items, canResolve) {
-        return items.map((ticket) => `<article class="notice"><strong>${escapeHtml(ticket.ticket_number || "-")}</strong><p>${escapeHtml(ticket.short_description || "")}</p><small>${formatDate(ticket.created_at)}</small><div class="actions">${canResolve ? `<button class="button primary" onclick="resolveTicket('${encodeURIComponent(ticket.ticket_number || "")}')">Resolve</button>` : ""}<button class="button secondary" onclick="openChat('${encodeURIComponent(ticket.ticket_number || "")}')">Chat</button></div></article>`).join("") || "<p>No tickets.</p>";
+        return items.map((ticket, index) => {
+          const ticketNumber = encodeURIComponent(ticket.ticket_number || "");
+          const responseId = `resolution-note-${index}`;
+          return `<article class="notice"><strong>${escapeHtml(ticket.ticket_number || "-")}</strong><p>${escapeHtml(ticket.short_description || "")}</p><small>${formatDate(ticket.created_at)}</small>${canResolve ? `<label class="ticket-response" for="${responseId}">Response to client<textarea id="${responseId}" placeholder="Describe the fix or next steps" required></textarea></label><div class="actions"><button class="button primary" onclick="resolveTicket('${ticketNumber}', '${responseId}')">Send response &amp; resolve</button>` : `<div class="actions">`}<button class="button secondary" onclick="openChat('${ticketNumber}')">Chat</button></div></article>`;
+        }).join("") || "<p>No tickets.</p>";
       }
 
-      async function resolveTicket(ticketNumber) {
+      async function resolveTicket(ticketNumber, responseId) {
         ticketNumber = decodeURIComponent(ticketNumber);
-        const resolution_note = prompt("Enter resolution note:");
-        if (!resolution_note) return;
-        await apiFetch("/resolve-ticket", { method: "POST", body: JSON.stringify({ ticket_number: ticketNumber, resolution_note }) });
-        loadEngineerAlerts();
+        const resolution_note = qs("#" + responseId)?.value.trim();
+        if (!resolution_note) {
+          setMessage("pageMsg", "Enter a response before resolving the ticket.", "error");
+          return;
+        }
+        try {
+          await apiFetch("/resolve-ticket", { method: "POST", body: JSON.stringify({ ticket_number: ticketNumber, resolution_note }) });
+          setMessage("pageMsg", `Response sent for ${ticketNumber}. Ticket marked resolved.`, "success");
+          loadEngineerAlerts();
+        } catch (error) {
+          setMessage("pageMsg", error.message, "error");
+        }
       }
 
       function openChat(ticketNumber) {

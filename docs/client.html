@@ -28,6 +28,8 @@
       `);
       loadCurrentUser();
 
+      let overviewChart;
+
       async function loadClientDashboard() {
         try {
           const data = await apiFetch("/client-dashboard");
@@ -36,7 +38,8 @@
           qs("#inProgressCount").textContent = data.inProgress || 0;
           qs("#resolvedCount").textContent = data.resolved || 0;
 
-          new Chart(qs("#overviewChart"), {
+          if (overviewChart) overviewChart.destroy();
+          overviewChart = new Chart(qs("#overviewChart"), {
             type: "doughnut",
             data: {
               labels: ["Open", "In Progress", "Resolved"],
@@ -53,7 +56,10 @@
         }
       }
 
-      if (auth) loadClientDashboard();
+      if (auth) {
+        loadClientDashboard();
+        setInterval(loadClientDashboard, 10000);
+      }
     </script>
   </body>
 </html>
