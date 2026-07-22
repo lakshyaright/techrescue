@@ -20,7 +20,10 @@
           <div class="metric"><strong id="statusValue">Offline</strong><span>Status</span></div>
         </section>
         <section class="card" style="margin-top:18px">
-          <label><span>Availability</span><input type="checkbox" id="statusToggle" onchange="toggleStatus()" /></label>
+          <div class="availability-control">
+            <div><h3>Availability</h3><p id="availabilityHint">You are currently offline and will not accept new tickets.</p></div>
+            <button class="button availability-toggle" id="statusToggle" type="button" aria-pressed="false" onclick="toggleStatus()">Go Online</button>
+          </div>
         </section>
         <section class="layout-two">
           <div class="card"><h3>New Alerts</h3><div id="alertsContainer" class="list"><p>Loading alerts...</p></div></div>
@@ -39,13 +42,30 @@
       }
 
       async function toggleStatus() {
-        const online = qs("#statusToggle").checked;
-        qs("#statusValue").textContent = online ? "Online" : "Offline";
+        const button = qs("#statusToggle");
+        const online = button.getAttribute("aria-pressed") !== "true";
+        button.disabled = true;
         try {
           await apiFetch("/update-status", { method: "POST", body: JSON.stringify({ online }) });
+          renderAvailability(online);
+          setMessage("pageMsg", online ? "You are now online and can accept tickets." : "You are now offline.", "success");
         } catch (error) {
           setMessage("pageMsg", error.message, "error");
+        } finally {
+          button.disabled = false;
         }
+      }
+
+      function renderAvailability(online) {
+        const button = qs("#statusToggle");
+        if (!button) return;
+        button.setAttribute("aria-pressed", String(online));
+        button.textContent = online ? "Go Offline" : "Go Online";
+        button.classList.toggle("online", online);
+        qs("#statusValue").textContent = online ? "Online" : "Offline";
+        qs("#availabilityHint").textContent = online
+          ? "You are online and can accept new tickets."
+          : "You are currently offline and will not accept new tickets.";
       }
 
       async function loadAlerts() {
@@ -61,7 +81,7 @@
 
       async function respondToAlert(ticketNumber) {
         ticketNumber = decodeURIComponent(ticketNumber);
-        if (!qs("#statusToggle").checked) {
+        if (qs("#statusToggle").getAttribute("aria-pressed") !== "true") {
           setMessage("pageMsg", "Set your availability to Online before responding to a ticket.", "error");
           return;
         }
@@ -87,10 +107,7 @@
 
       if (auth) {
         loadCurrentUser().then((user) => {
-          if (user?.online) {
-            qs("#statusToggle").checked = true;
-            qs("#statusValue").textContent = "Online";
-          }
+          renderAvailability(Boolean(user?.online));
         });
         checkProfile();
         loadAlerts();

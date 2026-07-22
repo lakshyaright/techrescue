@@ -660,6 +660,37 @@ textarea {
   min-height: 88px;
 }
 
+.availability-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.availability-control h3,
+.availability-control p {
+  margin: 0;
+}
+
+.availability-control p {
+  color: var(--muted);
+}
+
+.availability-toggle {
+  flex: 0 0 auto;
+  color: var(--white);
+  background: var(--teal);
+}
+
+.availability-toggle.online {
+  background: var(--red);
+}
+
+.availability-toggle:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
 .chat-shell {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
@@ -1077,6 +1108,11 @@ textarea {
 
   .chat-form {
     grid-template-columns: 1fr;
+  }
+
+  .availability-control {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   th,
