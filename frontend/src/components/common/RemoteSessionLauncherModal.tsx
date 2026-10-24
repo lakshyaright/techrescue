@@ -13,7 +13,10 @@ import {
   ArrowRight, 
   Lock, 
   Loader2,
-  Server
+  Server,
+  Download,
+  Key,
+  Check
 } from 'lucide-react';
 
 interface RemoteSessionLauncherModalProps {
@@ -35,11 +38,13 @@ export const RemoteSessionLauncherModal: React.FC<RemoteSessionLauncherModalProp
   const [selectedTicketId, setSelectedTicketId] = useState<string>(
     defaultTicketId || tickets.find(t => t.status !== 'CLOSED' && t.status !== 'RESOLVED')?.id || ''
   );
-  const [protocol, setProtocol] = useState<'WebRTC P2P Desktop' | 'Encrypted SSH Terminal'>('WebRTC P2P Desktop');
+  const [protocol, setProtocol] = useState<RemoteSession['protocol']>('Windows Remote Desktop (WebRTC/RDP)');
+  const [windowsEdition, setWindowsEdition] = useState('Windows 11 Enterprise (x64)');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedSession, setGeneratedSession] = useState<RemoteSession | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [chatSent, setChatSent] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedPIN, setCopiedPIN] = useState(false);
+  const [copiedScript, setCopiedScript] = useState(false);
 
   if (!isOpen) return null;
 
@@ -53,35 +58,31 @@ export const RemoteSessionLauncherModal: React.FC<RemoteSessionLauncherModalProp
 
     if (res.success && res.session) {
       setGeneratedSession(res.session);
-      setChatSent(true);
     } else {
       alert(res.error || 'Failed to generate session');
     }
   };
 
-  const handleCopy = () => {
-    if (!generatedSession) return;
-    navigator.clipboard.writeText(generatedSession.accessUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  const psBootstrapCmd = generatedSession 
+    ? `powershell -ExecutionPolicy Bypass -Command "iwr -useb ${window.location.origin}/agent/TechRescue-QuickSupport.ps1 | iex -SessionId ${generatedSession.sessionToken} -PIN ${generatedSession.quickSupportPin || '842-195'}"`
+    : '';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-xs">
       <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-5 border border-slate-200">
         
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-              <Server className="w-4 h-4" />
+            <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs border border-blue-100">
+              ME
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-900">
-                Remote Access & Take-Control Hub
+                ManageEngine Remote Access Plus
               </h3>
               <p className="text-xs text-slate-500">
-                Generate 1-click end-to-end encrypted remote support bridge
+                Generate authentic Windows OS remote control bridge
               </p>
             </div>
           </div>
@@ -116,38 +117,55 @@ export const RemoteSessionLauncherModal: React.FC<RemoteSessionLauncherModalProp
               )}
             </div>
 
-            {/* Step 2: Protocol Selection */}
+            {/* Step 2: Target Windows OS Edition */}
             <div>
               <label className="block font-semibold text-slate-700 mb-1.5">
-                Remote Control Protocol
+                Target Operating System
+              </label>
+              <select
+                value={windowsEdition}
+                onChange={(e) => setWindowsEdition(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+              >
+                <option value="Windows 11 Enterprise (x64)">Windows 11 Enterprise (23H2 / x64)</option>
+                <option value="Windows 11 Pro 64-bit">Windows 11 Pro 64-bit</option>
+                <option value="Windows 10 Enterprise (22H2)">Windows 10 Enterprise (22H2)</option>
+                <option value="Windows Server 2022 Datacenter">Windows Server 2022 Datacenter</option>
+              </select>
+            </div>
+
+            {/* Step 3: Remote Control Protocol */}
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1.5">
+                Remote Control Mode
               </label>
               <div className="grid grid-cols-2 gap-2.5">
                 <button
                   type="button"
-                  onClick={() => setProtocol('WebRTC P2P Desktop')}
+                  onClick={() => setProtocol('Windows Remote Desktop (WebRTC/RDP)')}
                   className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                    protocol === 'WebRTC P2P Desktop'
+                    protocol === 'Windows Remote Desktop (WebRTC/RDP)'
                       ? 'border-blue-600 bg-blue-50 text-blue-900 shadow-2xs font-semibold'
                       : 'border-slate-200 hover:border-slate-300 text-slate-700'
                   }`}
                 >
                   <Monitor className="w-4 h-4 text-blue-600 mb-1" />
-                  <div className="text-xs font-bold">Remote Desktop (GUI)</div>
-                  <div className="text-[10px] text-slate-500 mt-0.5">Live screen mirror & keyboard control</div>
+                  <div className="text-xs font-bold">Windows Desktop (GUI)</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">Live screen mirror, mouse, keyboard & Ctrl+Alt+Del</div>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => setProtocol('Encrypted SSH Terminal')}
+                  onClick={() => setProtocol('Windows PowerShell Admin CLI')}
                   className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                    protocol === 'Encrypted SSH Terminal'
+                    protocol === 'Windows PowerShell Admin CLI'
                       ? 'border-blue-600 bg-blue-50 text-blue-900 shadow-2xs font-semibold'
                       : 'border-slate-200 hover:border-slate-300 text-slate-700'
                   }`}
                 >
                   <Terminal className="w-4 h-4 text-blue-600 mb-1" />
-                  <div className="text-xs font-bold">Root Shell (CLI)</div>
-                  <div className="text-[10px] text-slate-500 mt-0.5">High-speed command execution</div>
+                  <div className="text-xs font-bold">PowerShell Admin (CLI)</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">Headless background diagnostics & services</div>
                 </button>
               </div>
             </div>
@@ -156,106 +174,131 @@ export const RemoteSessionLauncherModal: React.FC<RemoteSessionLauncherModalProp
             <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-slate-600 space-y-1">
               <div className="flex items-center gap-1.5 font-bold text-slate-800 text-[11px]">
                 <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                <span>Zero-Trust Enterprise Encryption</span>
+                <span>ManageEngine Zero-Trust Encryption</span>
               </div>
-              <p className="text-[10px] text-slate-500 leading-relaxed">
-                Direct WebRTC DTLS/SRTP channel. Client retains immediate kill-switch authority to terminate connection at any second.
+              <p className="text-[11px] leading-relaxed">
+                Generates a 6-digit QuickSupport PIN and end-to-end encrypted session using TLS 1.3 and AES-256 GCM.
               </p>
             </div>
 
-            {/* Action Buttons */}
-            <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-3.5 py-2 rounded-lg border border-slate-300 text-slate-700 font-medium hover:bg-slate-50 cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleGenerate}
-                disabled={isGenerating || !selectedTicketId}
-                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-xs"
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Generating Tunnel...</span>
-                  </>
-                ) : (
-                  <>
-                    <Lock className="w-3.5 h-3.5" />
-                    <span>Generate Secure Access Link</span>
-                  </>
-                )}
-              </button>
-            </div>
+            {/* Submit Button */}
+            <button
+              onClick={handleGenerate}
+              disabled={isGenerating || eligibleTickets.length === 0}
+              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Bootstrapping Windows Remote Gateway...</span>
+                </>
+              ) : (
+                <>
+                  <span>Generate Windows Remote URL & PIN</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
           </div>
         ) : (
-          /* Step 3: Session Generated Successfully with Direct Link */
+          /* Step 2: Session Ready View */
           <div className="space-y-4 text-xs">
-            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 flex items-start gap-2.5">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-              <div>
-                <span className="font-bold block">Remote Access Bridge Generated!</span>
-                <span className="text-[11px] text-emerald-700">
-                  Unique Session: <strong className="font-mono">{generatedSession.id}</strong>
-                </span>
+            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2">
+              <div className="flex items-center gap-2 text-emerald-900 font-bold">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>Windows Remote Session Ready</span>
               </div>
+              <p className="text-emerald-800 text-xs">
+                ManageEngine Remote Gateway established for <strong className="font-mono">{generatedSession.computerName}</strong>. Share the 6-digit PIN or direct link with the user.
+              </p>
             </div>
 
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">
-                Shareable Client Authorization URL:
-              </label>
+            {/* QuickSupport PIN Box */}
+            <div className="p-4 bg-slate-900 text-white rounded-xl border border-slate-800 text-center space-y-1">
+              <span className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider">
+                QuickSupport Client 6-Digit PIN
+              </span>
+              <div className="text-2xl font-mono font-bold text-cyan-300 tracking-widest">
+                {generatedSession.quickSupportPin || '842-195'}
+              </div>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(generatedSession.quickSupportPin || '842-195');
+                  setCopiedPIN(true);
+                  setTimeout(() => setCopiedPIN(false), 2000);
+                }}
+                className="mt-1 text-[11px] text-slate-400 hover:text-white inline-flex items-center gap-1 font-mono"
+              >
+                {copiedPIN ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                <span>{copiedPIN ? 'PIN Copied!' : 'Copy PIN'}</span>
+              </button>
+            </div>
+
+            {/* Direct Web Join URL */}
+            <div className="space-y-1">
+              <label className="block font-semibold text-slate-700">Client Direct Web Access Link</label>
               <div className="flex items-center gap-1.5">
                 <input
                   type="text"
                   readOnly
                   value={generatedSession.accessUrl}
-                  className="flex-1 px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 text-slate-700 font-mono text-[11px] select-all"
+                  className="flex-1 font-mono text-[11px] px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800"
                 />
                 <button
-                  type="button"
-                  onClick={handleCopy}
-                  className="px-3 py-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold flex items-center gap-1 shrink-0 cursor-pointer"
+                  onClick={() => {
+                    navigator.clipboard.writeText(generatedSession.accessUrl);
+                    setCopiedLink(true);
+                    setTimeout(() => setCopiedLink(false), 2000);
+                  }}
+                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-semibold flex items-center gap-1 shrink-0"
                 >
-                  <Copy className="w-3.5 h-3.5" />
-                  <span>{copied ? 'Copied!' : 'Copy'}</span>
+                  {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedLink ? 'Copied' : 'Copy'}</span>
                 </button>
               </div>
             </div>
 
-            {chatSent && (
-              <div className="p-2.5 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 text-[11px] flex items-center gap-1.5">
-                <MessageSquare className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                <span>Link was automatically dispatched into the Client Ticket Chat stream!</span>
+            {/* 1-Click PowerShell Run Command for Windows */}
+            <div className="space-y-1">
+              <label className="block font-semibold text-slate-700">1-Click Windows Run Command (Win + R)</label>
+              <div className="p-2.5 bg-slate-900 border border-slate-800 rounded-lg font-mono text-[11px] text-cyan-300 flex items-center justify-between gap-2 overflow-x-auto">
+                <span className="truncate">{psBootstrapCmd}</span>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(psBootstrapCmd);
+                    setCopiedScript(true);
+                    setTimeout(() => setCopiedScript(false), 2000);
+                  }}
+                  className="p-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded shrink-0"
+                  title="Copy PowerShell Command"
+                >
+                  {copiedScript ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                </button>
               </div>
-            )}
+            </div>
 
-            <div className="pt-2 flex items-center justify-between border-t border-slate-100">
+            {/* Launch Console Action */}
+            <div className="pt-2 flex items-center justify-between">
               <button
-                type="button"
-                onClick={() => setGeneratedSession(null)}
-                className="text-slate-500 hover:text-slate-800 text-xs font-medium cursor-pointer"
+                onClick={onClose}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800"
               >
-                ← Back
+                Close
               </button>
               <button
-                type="button"
                 onClick={() => {
                   onLaunchConsole(generatedSession);
                   onClose();
                 }}
-                className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center gap-1.5 cursor-pointer shadow-xs"
+                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 shadow-sm"
               >
-                <span>Launch Remote Console Now</span>
-                <ArrowRight className="w-4 h-4" />
+                <Monitor className="w-4 h-4" />
+                <span>Launch ManageEngine Console Now</span>
               </button>
             </div>
           </div>
         )}
+
       </div>
     </div>
   );

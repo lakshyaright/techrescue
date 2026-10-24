@@ -88,14 +88,14 @@ export const ExpertDashboard: React.FC = () => {
             <span>{isRefreshing ? 'Syncing...' : 'Sync DB'}</span>
           </button>
 
-          {/* ITEM 5: Remote Control Tool Launcher Button */}
+          {/* ITEM 5: ManageEngine Remote Control Tool Launcher Button */}
           <button
             onClick={() => setLauncherModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-colors shadow-xs cursor-pointer"
-            title="Generate secure remote desktop or terminal access URL"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors shadow-xs cursor-pointer"
+            title="Generate ManageEngine Windows Remote Desktop or PowerShell access URL"
           >
             <Server className="w-3.5 h-3.5" />
-            <span>Remote Take-Control Tool</span>
+            <span>ManageEngine Remote Access</span>
           </button>
 
           <button

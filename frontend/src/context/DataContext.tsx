@@ -44,7 +44,7 @@ interface DataContextType {
   resolveTicket: (ticketId: string, resolutionSummary: string, preventiveMeasures: string) => Promise<{ success: boolean; error?: string }>;
   confirmAndReleasePayment: (ticketId: string, rating: number, feedback: string) => Promise<{ success: boolean; error?: string }>;
   adminOverrideTicket: (ticketId: string, updates: Partial<QueryTicket>) => Promise<{ success: boolean; error?: string }>;
-  createRemoteSession: (ticketId: string, protocol?: 'WebRTC P2P Desktop' | 'Encrypted SSH Terminal') => Promise<{ success: boolean; session?: RemoteSession; error?: string }>;
+  createRemoteSession: (ticketId: string, protocol?: RemoteSession['protocol']) => Promise<{ success: boolean; session?: RemoteSession; error?: string }>;
   connectRemoteSession: (sessionId: string) => Promise<{ success: boolean }>;
   terminateRemoteSession: (sessionId: string) => Promise<{ success: boolean }>;
   getTicketById: (ticketId: string) => QueryTicket | undefined;
@@ -471,19 +471,24 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { success: true };
   };
 
-  // Item 5: Remote Screen & Terminal Access Session Engine
+  // Item 5: ManageEngine-Style Windows Remote Take-Control Engine
   const createRemoteSession = async (
     ticketId: string, 
-    protocol: 'WebRTC P2P Desktop' | 'Encrypted SSH Terminal' = 'WebRTC P2P Desktop'
+    protocol: RemoteSession['protocol'] = 'Windows Remote Desktop (WebRTC/RDP)'
   ) => {
     const ticket = tickets.find(t => t.id === ticketId);
     if (!ticket) return { success: false, error: 'Ticket not found' };
 
     const cleanNum = ticket.ticketNumber.replace(/[^A-Za-z0-9]/g, '');
-    const sessionId = `REMOTE-${cleanNum}-${Math.floor(100 + Math.random() * 900)}`;
+    const pinPart1 = Math.floor(100 + Math.random() * 900);
+    const pinPart2 = Math.floor(100 + Math.random() * 900);
+    const quickSupportPin = `${pinPart1}-${pinPart2}`;
+    const sessionId = `TR-WIN-${cleanNum.slice(-4) || '8492'}-${pinPart1}`;
     const sessionToken = `tok_${Math.random().toString(36).substring(2)}${Date.now()}`;
     const baseUrl = window.location.origin;
     const accessUrl = `${baseUrl}/client/query/${ticket.id}?remoteSession=${sessionId}&token=${sessionToken}`;
+    const computerName = `DESKTOP-${cleanNum.slice(-4) || 'WIN11'}`;
+    const companyTag = ticket.clientCompany?.toUpperCase().replace(/[^A-Z]/g, '') || 'CORP';
 
     const newSession: RemoteSession = {
       id: sessionId,
@@ -497,8 +502,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       accessUrl,
       status: 'PENDING',
       createdAt: new Date().toISOString(),
-      targetHostname: `${ticket.category.toLowerCase().replace(/[^a-z]/g, '-')}-srv01`,
-      osInfo: ticket.environment.includes('Windows') ? 'Windows Server 2022 Datacenter' : 'Ubuntu 24.04 LTS (x86_64)',
+      targetHostname: computerName,
+      computerName,
+      windowsEdition: 'Windows 11 Pro 64-bit (Build 22631.3880)',
+      domainOrWorkgroup: `${companyTag}.LOCAL`,
+      ipAddress: '192.168.1.184',
+      activeUser: `${companyTag}\\${ticket.clientName.replace(/\s+/g, '.').toLowerCase()}`,
+      quickSupportPin,
+      blankScreenActive: false,
+      inputBlocked: false,
+      osInfo: 'Microsoft Windows 11 Enterprise (Version 23H2 / x64)',
       protocol
     };
 
@@ -509,14 +522,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Send session card into chat
     await sendChatMessage(
       ticketId,
-      `[REMOTE_SESSION_INVITE]: Specialist ${currentUser?.name} generated a secure ${protocol} remote session. Client link: ${accessUrl}`
+      `[WINDOWS_REMOTE_INVITE]: ManageEngine Remote Access generated for ${computerName}. QuickSupport PIN: ${quickSupportPin} | Join Link: ${accessUrl}`
     );
 
     // Record in work logs
     await addWorkLog(
       ticketId,
       0.1,
-      `Initiated remote screen & terminal diagnostic bridge (${protocol}). Session Token: ${sessionId}`,
+      `Initiated ManageEngine-style Windows Remote Control session on ${computerName} (${protocol}). PIN: ${quickSupportPin}`,
       true
     );
 

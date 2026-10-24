@@ -107,7 +107,20 @@ export interface RemoteSession {
   terminatedAt?: string;
   targetHostname?: string;
   osInfo?: string;
-  protocol: 'WebRTC P2P Desktop' | 'Encrypted SSH Terminal';
+  windowsEdition?: string;
+  computerName?: string;
+  domainOrWorkgroup?: string;
+  ipAddress?: string;
+  activeUser?: string;
+  quickSupportPin?: string;
+  blankScreenActive?: boolean;
+  inputBlocked?: boolean;
+  protocol: 
+    | 'Windows Remote Desktop (WebRTC/RDP)' 
+    | 'Windows PowerShell Admin CLI' 
+    | 'Windows QuickSupport Agent'
+    | 'WebRTC P2P Desktop' 
+    | 'Encrypted SSH Terminal';
 }
 
 export interface QueryTicket {

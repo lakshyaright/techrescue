@@ -207,28 +207,25 @@ export const QueryDetails: React.FC = () => {
               <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-950 via-slate-900 to-cyan-950 border border-emerald-500/30 text-white shadow-md">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center shrink-0 text-emerald-400">
-                      {activeRemoteSession.protocol === 'WebRTC P2P Desktop' ? (
-                        <Monitor className="w-5 h-5" />
-                      ) : (
-                        <Terminal className="w-5 h-5" />
-                      )}
+                    <div className="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center shrink-0 text-blue-400 font-bold text-xs">
+                      ME
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                          Remote Session {activeRemoteSession.status}
+                          ManageEngine Remote Bridge ({activeRemoteSession.status})
                         </span>
                         <span className="text-[11px] font-mono text-cyan-300">
-                          {activeRemoteSession.protocol}
+                          {activeRemoteSession.windowsEdition || 'Windows 11 Pro x64'}
                         </span>
                       </div>
                       <p className="text-xs font-semibold text-slate-200 mt-1">
-                        Target System: <span className="font-mono text-cyan-300">{activeRemoteSession.targetHostname || 'srv-datacenter-01'}</span>
-                      </p>
-                      <p className="text-[11px] text-slate-400">
-                        Token: <span className="font-mono text-slate-300">{activeRemoteSession.sessionToken}</span>
+                        Host: <span className="font-mono text-cyan-300">{activeRemoteSession.computerName || activeRemoteSession.targetHostname || 'DESKTOP-TR94'}</span>
+                        <span className="text-slate-400 font-normal"> · PIN: </span>
+                        <span className="font-mono font-bold text-amber-300">{activeRemoteSession.quickSupportPin || '842-195'}</span>
+                        <span className="text-slate-400 font-normal"> · User: </span>
+                        <span className="text-slate-300">{activeRemoteSession.activeUser || 'CORP\\Admin'}</span>
                       </p>
                     </div>
                   </div>
