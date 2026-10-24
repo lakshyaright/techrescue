@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
@@ -17,9 +17,17 @@ import {
   Activity, 
   Star,
   Download,
-  Share2
+  Share2,
+  Terminal,
+  Monitor,
+  ExternalLink,
+  Copy,
+  Check,
+  RefreshCw
 } from 'lucide-react';
 import { StatusBadge, PriorityBadge } from '../../components/common/Badge';
+import { RemoteSessionLauncherModal } from '../../components/common/RemoteSessionLauncherModal';
+import { RemoteConsoleModal } from '../../components/common/RemoteConsoleModal';
 
 export const QueryDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -30,6 +38,8 @@ export const QueryDetails: React.FC = () => {
     messages, 
     activityLogs, 
     payments, 
+    remoteSessions,
+    refreshData,
     sendChatMessage, 
     addWorkLog, 
     confirmAndReleasePayment,
@@ -51,9 +61,23 @@ export const QueryDetails: React.FC = () => {
   const [preventiveMeasures, setPreventiveMeasures] = useState('');
   const [isSubmittingResolution, setIsSubmittingResolution] = useState(false);
 
-  // New work log state
-  const [logHours, setLogHours] = useState('1.0');
+  // Work log state (Support for both Client & Specialist)
+  const [logType, setLogType] = useState<'technical' | 'client_note'>(
+    role === 'CLIENT' ? 'client_note' : 'technical'
+  );
+  const [logHours, setLogHours] = useState(role === 'CLIENT' ? '0' : '1.0');
   const [logNotes, setLogNotes] = useState('');
+  const [isSubmittingLog, setIsSubmittingLog] = useState(false);
+
+  // Remote Take-Control Session modals
+  const [isRemoteLauncherOpen, setIsRemoteLauncherOpen] = useState(false);
+  const [isRemoteConsoleOpen, setIsRemoteConsoleOpen] = useState(false);
+  const [selectedSession, setSelectedSession] = useState<any | null>(null);
+  const [copiedToken, setCopiedToken] = useState(false);
+
+  useEffect(() => {
+    refreshData();
+  }, [id, refreshData]);
 
   const ticket = tickets.find(t => t.id === id);
 
@@ -71,6 +95,10 @@ export const QueryDetails: React.FC = () => {
       </div>
     );
   }
+
+  const activeRemoteSession = remoteSessions.find(
+    s => s.ticketId === ticket?.id && s.status !== 'TERMINATED'
+  );
 
   const ticketMessages = messages.filter(m => m.queryId === ticket.id);
   const ticketActivities = activityLogs.filter(a => a.queryId === ticket.id);
@@ -100,8 +128,12 @@ export const QueryDetails: React.FC = () => {
   const handleAddLog = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!logNotes.trim()) return;
-    await addWorkLog(ticket.id, parseFloat(logHours) || 1, logNotes.trim());
+    setIsSubmittingLog(true);
+    const hours = logType === 'client_note' ? 0 : (parseFloat(logHours) || 0.5);
+    const prefix = logType === 'client_note' && role === 'CLIENT' ? '[Client Observation] ' : '';
+    await addWorkLog(ticket.id, hours, `${prefix}${logNotes.trim()}`);
     setLogNotes('');
+    setIsSubmittingLog(false);
   };
 
   return (
@@ -167,6 +199,97 @@ export const QueryDetails: React.FC = () => {
                 {ticket.engineerLocation || 'Remote investigation'}
               </span>
             </div>
+          </div>
+
+          {/* Remote Take-Control Direct Action Banner */}
+          <div className="mt-4 pt-4 border-t border-slate-100">
+            {activeRemoteSession ? (
+              <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-950 via-slate-900 to-cyan-950 border border-emerald-500/30 text-white shadow-md">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center shrink-0 text-emerald-400">
+                      {activeRemoteSession.protocol === 'WebRTC P2P Desktop' ? (
+                        <Monitor className="w-5 h-5" />
+                      ) : (
+                        <Terminal className="w-5 h-5" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                          Remote Session {activeRemoteSession.status}
+                        </span>
+                        <span className="text-[11px] font-mono text-cyan-300">
+                          {activeRemoteSession.protocol}
+                        </span>
+                      </div>
+                      <p className="text-xs font-semibold text-slate-200 mt-1">
+                        Target System: <span className="font-mono text-cyan-300">{activeRemoteSession.targetHostname || 'srv-datacenter-01'}</span>
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        Token: <span className="font-mono text-slate-300">{activeRemoteSession.sessionToken}</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={() => {
+                        const shareUrl = `${window.location.origin}/remote-session/${activeRemoteSession.id}?token=${activeRemoteSession.sessionToken}`;
+                        navigator.clipboard.writeText(shareUrl);
+                        setCopiedToken(true);
+                        setTimeout(() => setCopiedToken(false), 2000);
+                      }}
+                      className="px-3 py-1.5 bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 rounded-lg text-xs font-semibold border border-slate-700 inline-flex items-center gap-1.5 transition-colors"
+                      title="Copy Remote Access Link"
+                    >
+                      {copiedToken ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedToken ? 'Copied' : 'Copy URL'}</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setSelectedSession(activeRemoteSession);
+                        setIsRemoteConsoleOpen(true);
+                      }}
+                      className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition-all"
+                    >
+                      <Terminal className="w-3.5 h-3.5" />
+                      <span>
+                        {role === 'CLIENT' ? 'Authorize & Connect Remote Session' : 'Launch Remote Console'}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-lg bg-slate-50 border border-slate-200">
+                <div className="flex items-center gap-2.5">
+                  <Terminal className="w-4 h-4 text-slate-500 shrink-0" />
+                  <div>
+                    <span className="text-xs font-semibold text-slate-800 block">
+                      Remote Take-Control Diagnostics
+                    </span>
+                    <span className="text-[11px] text-slate-500 block">
+                      {role === 'CLIENT' 
+                        ? 'Specialist has not generated a remote access link yet. When requested, a secure one-click authorization button will appear here.'
+                        : 'Need root shell or live screen access to fix this issue? Generate an encrypted remote take-control session for the user.'}
+                    </span>
+                  </div>
+                </div>
+
+                {(role === 'EXPERT' || role === 'ENGINEER' || role === 'ADMIN') && (
+                  <button
+                    onClick={() => setIsRemoteLauncherOpen(true)}
+                    className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 transition-colors shrink-0"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Generate Remote URL</span>
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -376,45 +499,102 @@ export const QueryDetails: React.FC = () => {
       {/* TAB CONTENT 4: Work Logs */}
       {activeTab === 'worklogs' && (
         <div className="space-y-6">
-          {/* Add Work Log Box (For Assigned Specialist or Engineer) */}
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-2xs space-y-4">
-            <h3 className="text-sm font-bold text-slate-900">Add Technical Work Log Entry</h3>
+          {/* Add Work Log Box (For BOTH Client & Specialist) */}
+          <div className="bg-white p-5 sm:p-6 rounded-xl border border-slate-200 shadow-2xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Add Incident Work Log / Diagnostic Entry</h3>
+                <p className="text-xs text-slate-500">
+                  Both clients and assigned specialists can append verified notes, commands, and observations.
+                </p>
+              </div>
+
+              {/* Mode Selector */}
+              <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-lg text-xs">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLogType('technical');
+                    setLogHours('1.0');
+                  }}
+                  className={`px-3 py-1 rounded-md font-semibold transition-colors ${
+                    logType === 'technical'
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  Technical Diagnostic
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLogType('client_note');
+                    setLogHours('0');
+                  }}
+                  className={`px-3 py-1 rounded-md font-semibold transition-colors ${
+                    logType === 'client_note'
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  Client Note
+                </button>
+              </div>
+            </div>
+
             <form onSubmit={handleAddLog} className="space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 <div className="sm:col-span-1">
                   <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                    Hours Spent
+                    {logType === 'technical' ? 'Hours Spent' : 'Time Allocation'}
                   </label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    min="0.5"
-                    value={logHours}
-                    onChange={(e) => setLogHours(e.target.value)}
-                    className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
+                  {logType === 'technical' ? (
+                    <input
+                      type="number"
+                      step="0.5"
+                      min="0.5"
+                      value={logHours}
+                      onChange={(e) => setLogHours(e.target.value)}
+                      className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  ) : (
+                    <div className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-500 font-mono">
+                      0.0 hrs (Non-billable)
+                    </div>
+                  )}
                 </div>
+
                 <div className="sm:col-span-3">
                   <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                    Work Diagnostic Details & Commands
+                    {logType === 'technical'
+                      ? 'Technical Diagnostics, Output & Configuration Actions'
+                      : 'Client Observations, Symptoms or Updates'}
                   </label>
                   <input
                     type="text"
                     required
                     value={logNotes}
                     onChange={(e) => setLogNotes(e.target.value)}
-                    placeholder="e.g. Reseated StackWise cable; verified link speed with show interfaces status..."
+                    placeholder={
+                      logType === 'technical'
+                        ? 'e.g. Reseated fiber SFP; ran tcpdump -i eth0 port 443; latency dropped to 4ms...'
+                        : 'e.g. Issue recurred when backup cron triggered at 14:00; attaching core dump...'
+                    }
                     className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
               </div>
-              <div className="flex justify-end">
+
+              <div className="flex justify-between items-center pt-1">
+                <span className="text-[11px] text-slate-400">
+                  Posting as: <strong className="text-slate-700">{currentUser.name}</strong> ({role})
+                </span>
                 <button
                   type="submit"
-                  disabled={!logNotes.trim()}
+                  disabled={!logNotes.trim() || isSubmittingLog}
                   className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
                 >
-                  Record Work Entry
+                  {isSubmittingLog ? 'Recording Entry...' : 'Record Work Entry'}
                 </button>
               </div>
             </form>
@@ -705,6 +885,31 @@ export const QueryDetails: React.FC = () => {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Remote Take-Control Launcher Modal */}
+      <RemoteSessionLauncherModal
+        isOpen={isRemoteLauncherOpen}
+        onClose={() => setIsRemoteLauncherOpen(false)}
+        onLaunchConsole={(sess) => {
+          setSelectedSession(sess);
+          setIsRemoteLauncherOpen(false);
+          setIsRemoteConsoleOpen(true);
+        }}
+        defaultTicketId={ticket.id}
+      />
+
+      {/* Remote Take-Control Interactive Console Modal */}
+      {(selectedSession || activeRemoteSession) && (
+        <RemoteConsoleModal
+          isOpen={isRemoteConsoleOpen}
+          onClose={() => {
+            setIsRemoteConsoleOpen(false);
+            setSelectedSession(null);
+          }}
+          session={selectedSession || activeRemoteSession!}
+          isExpert={role === 'EXPERT' || role === 'ENGINEER' || role === 'ADMIN'}
+        />
       )}
     </div>
   );

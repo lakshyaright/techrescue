@@ -91,9 +91,29 @@ export interface ChatMessage {
   attachmentName?: string;
 }
 
+export interface RemoteSession {
+  id: string;
+  ticketId: string;
+  ticketNumber: string;
+  expertId: string;
+  expertName: string;
+  clientId: string;
+  clientName: string;
+  sessionToken: string;
+  accessUrl: string;
+  status: 'PENDING' | 'CONNECTED' | 'TERMINATED';
+  createdAt: string;
+  connectedAt?: string;
+  terminatedAt?: string;
+  targetHostname?: string;
+  osInfo?: string;
+  protocol: 'WebRTC P2P Desktop' | 'Encrypted SSH Terminal';
+}
+
 export interface QueryTicket {
   id: string;
-  ticketNumber: string; // INC-20261008-0001
+  ticketNumber: string; // INC-20261008-0001 or SER-20261008-0001
+  ticketType?: 'INC' | 'SER';
   title: string;
   category: TicketCategory;
   subcategory: string;

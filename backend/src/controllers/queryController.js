@@ -43,8 +43,15 @@ exports.getQuery = async (req, res, next) => {
 
     const ticket = result.rows[0];
 
-    // Fetch associated work logs
-    const logs = await db.query('SELECT * FROM work_logs WHERE query_id = $1 ORDER BY created_at DESC', [ticket.id]);
+    // Fetch associated work logs with author details joined
+    const logs = await db.query(
+      `SELECT wl.*, u.name as author_name, u.role as author_role 
+       FROM work_logs wl 
+       LEFT JOIN users u ON wl.author_id = u.id 
+       WHERE wl.query_id = $1 
+       ORDER BY wl.created_at DESC`,
+      [ticket.id]
+    );
     ticket.workLogs = logs.rows;
 
     res.status(200).json({ success: true, data: ticket });
@@ -53,7 +60,7 @@ exports.getQuery = async (req, res, next) => {
   }
 };
 
-// @desc    Create new query ticket
+// @desc    Create new query ticket (Supports INC and SER)
 // @route   POST /api/v1/queries
 exports.createQuery = async (req, res, next) => {
   try {
@@ -67,7 +74,9 @@ exports.createQuery = async (req, res, next) => {
       detailedDescription,
       environment,
       assignmentGroup,
-      estimatedCost
+      estimatedCost,
+      ticketType,
+      requestType
     } = req.body;
 
     // Compute priority
@@ -76,12 +85,14 @@ exports.createQuery = async (req, res, next) => {
     else if (impact === 'HIGH' || urgency === 'HIGH') priority = 'HIGH';
 
     // Compute SLA target
-    const slaHours = priority === 'CRITICAL' ? 2 : priority === 'HIGH' ? 4 : 12;
+    const isServiceRequest = ticketType === 'SER' || requestType === 'SER';
+    const slaHours = isServiceRequest ? 24 : (priority === 'CRITICAL' ? 2 : priority === 'HIGH' ? 4 : 12);
     const slaDeadline = new Date(Date.now() + slaHours * 3600000);
 
     const ticketId = `tkt-${Date.now()}`;
     const datePrefix = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const ticketNumber = `INC-${datePrefix}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const prefix = isServiceRequest ? 'SER' : 'INC';
+    const ticketNumber = `${prefix}-${datePrefix}-${Math.floor(1000 + Math.random() * 9000)}`;
 
     const insertText = `
       INSERT INTO queries (
@@ -109,7 +120,7 @@ exports.createQuery = async (req, res, next) => {
       detailedDescription,
       environment,
       assignmentGroup,
-      estimatedCost || 3500.00,
+      estimatedCost || (isServiceRequest ? 2500.00 : 3500.00),
       slaDeadline
     ]);
 
@@ -209,8 +220,25 @@ exports.addWorkLog = async (req, res, next) => {
       `INSERT INTO work_logs (id, query_id, author_id, hours_spent, notes, is_diagnostic, created_at)
        VALUES ($1, $2, $3, $4, $5, $6, NOW())
        RETURNING *`,
-      [logId, req.params.id, req.user.id, hoursSpent || 1.0, notes, isDiagnostic || false]
+      [logId, req.params.id, req.user.id, hoursSpent !== undefined ? parseFloat(hoursSpent) : 0.5, notes || '', isDiagnostic || false]
     );
+
+    // Also record event in activity_logs
+    try {
+      await db.query(
+        `INSERT INTO activity_logs (id, query_id, user_id, user_name, user_role, action, details, activity_type, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'comment', NOW())`,
+        [
+          `act-${Date.now()}`,
+          req.params.id,
+          req.user.id,
+          req.user.name || 'User',
+          req.user.role || 'CLIENT',
+          req.user.role === 'CLIENT' ? 'Client Added Progress Note' : 'Specialist Logged Work & Diagnostics',
+          notes || 'Work log entry recorded'
+        ]
+      );
+    } catch (_) {}
 
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (err) {

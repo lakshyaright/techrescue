@@ -11,7 +11,13 @@ import {
   AlertTriangle, 
   FileText, 
   Trash2,
-  DollarSign
+  DollarSign,
+  AlertCircle,
+  Server,
+  Zap,
+  Lock,
+  Loader2,
+  Info
 } from 'lucide-react';
 import { PriorityBadge } from '../../components/common/Badge';
 
@@ -23,16 +29,21 @@ export const RaiseQuery: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  // Request Classification (Item 2: INC vs SER)
+  const [ticketType, setTicketType] = useState<'INC' | 'SER'>('INC');
+
   // Form State
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<QueryTicket['category']>('Cloud Infrastructure');
   const [subcategory, setSubcategory] = useState('Virtual Network & Peering');
+  const [targetAsset, setTargetAsset] = useState('');
   const [impact, setImpact] = useState<QueryTicket['impact']>('HIGH');
   const [urgency, setUrgency] = useState<QueryTicket['urgency']>('HIGH');
 
   const [shortDescription, setShortDescription] = useState('');
   const [detailedDescription, setDetailedDescription] = useState('');
   const [environment, setEnvironment] = useState<QueryTicket['environment']>('Azure Cloud');
+  const [datacenterRegion, setDatacenterRegion] = useState('Central India (Pune) / AWS ap-south-1');
   const [assignmentGroup, setAssignmentGroup] = useState<QueryTicket['assignmentGroup']>('Cloud Operations');
   const [attachments, setAttachments] = useState<{ id: string; name: string; size: string; type: string; uploadedBy: string; uploadedAt: string }[]>([]);
 
@@ -41,6 +52,10 @@ export const RaiseQuery: React.FC = () => {
 
   // Calculate Priority preview
   const computePriority = (): QueryTicket['priority'] => {
+    if (ticketType === 'SER') {
+      if (impact === 'ENTERPRISE') return 'HIGH';
+      return 'MEDIUM';
+    }
     if (impact === 'ENTERPRISE' || urgency === 'EMERGENCY') return 'CRITICAL';
     if (impact === 'HIGH' && urgency === 'HIGH') return 'HIGH';
     if (impact === 'HIGH' || urgency === 'HIGH') return 'HIGH';
@@ -52,6 +67,9 @@ export const RaiseQuery: React.FC = () => {
   const priority = computePriority();
 
   const getEstimatedCost = () => {
+    if (ticketType === 'SER') {
+      return 2500;
+    }
     switch (priority) {
       case 'CRITICAL': return 6500;
       case 'HIGH': return 4500;
@@ -61,6 +79,13 @@ export const RaiseQuery: React.FC = () => {
   };
 
   const estimatedCost = getEstimatedCost();
+
+  const getSlaHours = () => {
+    if (ticketType === 'SER') return '24 Hours SLA';
+    if (priority === 'CRITICAL') return '2.0 Hours Emergency SLA';
+    if (priority === 'HIGH') return '4.0 Hours High-Priority SLA';
+    return '12.0 Hours Standard SLA';
+  };
 
   const handleAddAttachment = () => {
     if (!simulatedFile) return;
@@ -83,8 +108,10 @@ export const RaiseQuery: React.FC = () => {
   const handleFinalSubmit = async () => {
     if (!termsAccepted) return;
     setIsSubmitting(true);
-
     setSubmitError(null);
+
+    const fullDetails = `${detailedDescription}\n\n[Affected Asset/Hostname]: ${targetAsset || 'N/A'}\n[Region/Datacenter]: ${datacenterRegion}`;
+
     const res = await createTicket({
       title,
       category,
@@ -92,9 +119,10 @@ export const RaiseQuery: React.FC = () => {
       impact,
       urgency,
       shortDescription,
-      detailedDescription,
+      detailedDescription: fullDetails,
       environment,
       assignmentGroup,
+      ticketType,
       attachments
     });
 
@@ -108,404 +136,446 @@ export const RaiseQuery: React.FC = () => {
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6">
       {/* Wizard Header & Stepper */}
       <div className="border-b border-slate-200 pb-4">
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-          Raise Technical Query
-        </h1>
-        <p className="text-xs text-slate-500 mt-1">
-          Structured 3-step intake protocol to trigger SLA response and specialist lock
-        </p>
-
-        {submitError && (
-          <div className="mt-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-xs flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 shrink-0 text-red-600" />
-            <span>{submitError}</span>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+              Raise IT Ticket & Incident Intake
+            </h1>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Enterprise intake protocol with automated ITIL classification (INC vs SER) and escrow guarantee
+            </p>
           </div>
-        )}
+          <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200 text-slate-700">
+            Step {step} of 3
+          </span>
+        </div>
 
-        {/* 3 Step Visual Pills */}
-        <div className="flex items-center justify-between mt-6 max-w-xl">
-          <div className="flex items-center gap-2">
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs ${
-              step >= 1 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'
-            }`}>
-              1
-            </div>
-            <span className={`text-xs font-medium ${step === 1 ? 'text-slate-900 font-semibold' : 'text-slate-500'}`}>
-              Query Details
-            </span>
+        {/* Visual Stepper */}
+        <div className="grid grid-cols-3 gap-3 mt-4 text-xs font-semibold">
+          <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${step >= 1 ? 'border-blue-600 bg-blue-50/70 text-blue-900' : 'border-slate-200 text-slate-400'}`}>
+            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${step >= 1 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'}`}>1</span>
+            <span>Classification & Target Asset</span>
           </div>
 
-          <div className={`h-0.5 w-12 sm:w-20 ${step >= 2 ? 'bg-blue-600' : 'bg-slate-200'}`} />
-
-          <div className="flex items-center gap-2">
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs ${
-              step >= 2 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'
-            }`}>
-              2
-            </div>
-            <span className={`text-xs font-medium ${step === 2 ? 'text-slate-900 font-semibold' : 'text-slate-500'}`}>
-              Technical Scope
-            </span>
+          <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${step >= 2 ? 'border-blue-600 bg-blue-50/70 text-blue-900' : 'border-slate-200 text-slate-400'}`}>
+            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${step >= 2 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'}`}>2</span>
+            <span>Diagnostic Scope & Logs</span>
           </div>
 
-          <div className={`h-0.5 w-12 sm:w-20 ${step >= 3 ? 'bg-blue-600' : 'bg-slate-200'}`} />
-
-          <div className="flex items-center gap-2">
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs ${
-              step >= 3 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'
-            }`}>
-              3
-            </div>
-            <span className={`text-xs font-medium ${step === 3 ? 'text-slate-900 font-semibold' : 'text-slate-500'}`}>
-              Review & Submit
-            </span>
+          <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${step === 3 ? 'border-blue-600 bg-blue-50/70 text-blue-900' : 'border-slate-200 text-slate-400'}`}>
+            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${step === 3 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'}`}>3</span>
+            <span>SLA Matrix & Escrow Vault</span>
           </div>
         </div>
       </div>
 
-      {/* STEP 1: Query Details */}
+      {submitError && (
+        <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl text-red-800 text-xs flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+          <span>{submitError}</span>
+        </div>
+      )}
+
+      {/* STEP 1: CLASSIFICATION (INC vs SER) & TARGET ASSET */}
       {step === 1 && (
-        <div className="bg-white p-6 sm:p-8 rounded-xl border border-slate-200 shadow-2xs space-y-6">
-          <h2 className="text-base font-bold text-slate-900">Step 1: Incident Categorization</h2>
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-6">
+          {/* Classification Toggle: INC vs SER */}
+          <div>
+            <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-2">
+              Select Ticket Classification Type
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setTicketType('INC')}
+                className={`p-4 rounded-xl border text-left transition-all cursor-pointer ${
+                  ticketType === 'INC'
+                    ? 'border-rose-600 bg-rose-50/80 text-rose-950 shadow-xs'
+                    : 'border-slate-200 hover:border-slate-300 bg-white text-slate-700'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-md bg-rose-600 text-white flex items-center justify-center font-mono text-xs font-bold">
+                      INC
+                    </span>
+                    <span className="font-bold text-sm">Incident Ticket (Break / Fix)</span>
+                  </div>
+                  {ticketType === 'INC' && <CheckCircle2 className="w-4 h-4 text-rose-600" />}
+                </div>
+                <p className="text-xs text-rose-800/80">
+                  Unplanned service disruption, critical outage, system downtime, firewall failure, or latency emergency.
+                </p>
+                <div className="mt-2 text-[10px] font-mono text-rose-700 font-semibold">
+                  Prefix: INC-2026-XXXX · Rapid 2-4h SLA
+                </div>
+              </button>
 
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Incident Title *
-              </label>
-              <input
-                type="text"
-                required
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Core Cisco Catalyst 9300 Port Flapping on Uplink 2"
-                className="w-full text-xs px-3.5 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Primary Category *
-                </label>
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value as QueryTicket['category'])}
-                  className="w-full text-xs px-3.5 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                >
-                  <option value="Cloud Infrastructure">Cloud Infrastructure</option>
-                  <option value="Network & Firewall">Network & Firewall</option>
-                  <option value="Security & Compliance">Security & Compliance</option>
-                  <option value="Hardware & Servers">Hardware & Servers</option>
-                  <option value="Software & DevOps">Software & DevOps</option>
-                  <option value="Datacenter & Storage">Datacenter & Storage</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Subcategory *
-                </label>
-                <input
-                  type="text"
-                  value={subcategory}
-                  onChange={(e) => setSubcategory(e.target.value)}
-                  placeholder="e.g. ExpressRoute / BGP / Switch Stack"
-                  className="w-full text-xs px-3.5 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-
-            {/* Impact & Urgency Matrix */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Business Impact *
-                </label>
-                <select
-                  value={impact}
-                  onChange={(e) => setImpact(e.target.value as QueryTicket['impact'])}
-                  className="w-full text-xs px-3.5 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                >
-                  <option value="ENTERPRISE">Enterprise-Wide (Revenue Halted / Branch Isolated)</option>
-                  <option value="HIGH">High (Multiple Core Services Degraded)</option>
-                  <option value="MEDIUM">Medium (Single Department / Redundancy Lost)</option>
-                  <option value="LOW">Low (Single User / Non-Critical Component)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Urgency Level *
-                </label>
-                <select
-                  value={urgency}
-                  onChange={(e) => setUrgency(e.target.value as QueryTicket['urgency'])}
-                  className="w-full text-xs px-3.5 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                >
-                  <option value="EMERGENCY">Emergency (Immediate Intervention Needed)</option>
-                  <option value="HIGH">High (Within 2 Hours)</option>
-                  <option value="MEDIUM">Medium (Within Business Day)</option>
-                  <option value="LOW">Low (Standard Queue)</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Dynamic Computed Priority Indicator */}
-            <div className="p-3.5 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between text-xs">
-              <span className="text-slate-600 font-medium">Computed Ticket Priority:</span>
-              <PriorityBadge priority={priority} size="md" />
+              <button
+                type="button"
+                onClick={() => setTicketType('SER')}
+                className={`p-4 rounded-xl border text-left transition-all cursor-pointer ${
+                  ticketType === 'SER'
+                    ? 'border-indigo-600 bg-indigo-50/80 text-indigo-950 shadow-xs'
+                    : 'border-slate-200 hover:border-slate-300 bg-white text-slate-700'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-md bg-indigo-600 text-white flex items-center justify-center font-mono text-xs font-bold">
+                      SER
+                    </span>
+                    <span className="font-bold text-sm">Service Request (SER)</span>
+                  </div>
+                  {ticketType === 'SER' && <CheckCircle2 className="w-4 h-4 text-indigo-600" />}
+                </div>
+                <p className="text-xs text-indigo-800/80">
+                  Standard IT request, user access grant, cloud VM provisioning, database migration, or SSL certificate install.
+                </p>
+                <div className="mt-2 text-[10px] font-mono text-indigo-700 font-semibold">
+                  Prefix: SER-2026-XXXX · Standard 24h SLA
+                </div>
+              </button>
             </div>
           </div>
 
-          <div className="flex justify-end pt-4 border-t border-slate-100">
+          {/* Ticket Title */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Ticket Short Summary / Title <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder={ticketType === 'INC' ? "e.g. Production Redis Cluster failover stalled during high load" : "e.g. Provisioning staging Kubernetes ingress controller with TLS"}
+              className="w-full px-3.5 py-2.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium"
+            />
+          </div>
+
+          {/* Affected Target Asset & Datacenter Region */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">
+                Affected Target Host / IP / Cluster ARN
+              </label>
+              <input
+                type="text"
+                value={targetAsset}
+                onChange={(e) => setTargetAsset(e.target.value)}
+                placeholder="e.g. 10.20.14.88 / prod-db-replica-01"
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">
+                Cloud Zone / Datacenter Location
+              </label>
+              <select
+                value={datacenterRegion}
+                onChange={(e) => setDatacenterRegion(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+              >
+                <option value="AWS ap-south-1 (Mumbai)">AWS ap-south-1 (Mumbai)</option>
+                <option value="Azure Central India (Pune)">Azure Central India (Pune)</option>
+                <option value="GCP asia-south1 (Delhi)">GCP asia-south1 (Delhi)</option>
+                <option value="Equinix Tier-3 Datacenter (Mumbai)">Equinix Tier-3 Datacenter (Mumbai)</option>
+                <option value="Netmagic Datacenter (Bangalore)">Netmagic Datacenter (Bangalore)</option>
+                <option value="Hybrid On-Premise Rack">Hybrid On-Premise Rack</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Category & Subcategory */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">
+                Technical Stack Category
+              </label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value as any)}
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+              >
+                <option value="Cloud Infrastructure">Cloud Infrastructure</option>
+                <option value="Network & Firewall">Network & Firewall</option>
+                <option value="Security & Compliance">Security & Compliance</option>
+                <option value="Hardware & Servers">Hardware & Servers</option>
+                <option value="Software & DevOps">Software & DevOps</option>
+                <option value="Datacenter & Storage">Datacenter & Storage</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">
+                Component Subcategory
+              </label>
+              <input
+                type="text"
+                value={subcategory}
+                onChange={(e) => setSubcategory(e.target.value)}
+                placeholder="e.g. BGP Routing, Docker Ingress, SSL handshake"
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          {/* Stepper Navigation */}
+          <div className="pt-3 border-t border-slate-100 flex justify-end">
             <button
               type="button"
               disabled={!title.trim()}
               onClick={() => setStep(2)}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition-colors disabled:opacity-50"
+              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 shadow-xs"
             >
-              <span>Continue to Technical Scope</span>
-              <ArrowRight className="w-4 h-4" />
+              <span>Next: Diagnostic Scope</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
       )}
 
-      {/* STEP 2: Technical Scope & Attachments */}
+      {/* STEP 2: DIAGNOSTIC SCOPE & LOGS */}
       {step === 2 && (
-        <div className="bg-white p-6 sm:p-8 rounded-xl border border-slate-200 shadow-2xs space-y-6">
-          <h2 className="text-base font-bold text-slate-900">Step 2: Technical Scope & Environment</h2>
-
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Target Operating Environment *
-                </label>
-                <select
-                  value={environment}
-                  onChange={(e) => setEnvironment(e.target.value as QueryTicket['environment'])}
-                  className="w-full text-xs px-3.5 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                >
-                  <option value="Azure Cloud">Azure Cloud</option>
-                  <option value="AWS">AWS</option>
-                  <option value="Hybrid Cloud">Hybrid Cloud</option>
-                  <option value="On-Premises Datacenter">On-Premises Datacenter</option>
-                  <option value="Corporate Office LAN">Corporate Office LAN</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Recommended Assignment Group *
-                </label>
-                <select
-                  value={assignmentGroup}
-                  onChange={(e) => setAssignmentGroup(e.target.value as QueryTicket['assignmentGroup'])}
-                  className="w-full text-xs px-3.5 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                >
-                  <option value="Cloud Operations">Cloud Operations</option>
-                  <option value="Core Networking">Core Networking</option>
-                  <option value="Information Security">Information Security</option>
-                  <option value="Desktop & Hardware Engineering">Desktop & Hardware Engineering</option>
-                </select>
-              </div>
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">
+                Execution Environment
+              </label>
+              <select
+                value={environment}
+                onChange={(e) => setEnvironment(e.target.value as any)}
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+              >
+                <option value="Azure Cloud">Azure Cloud (Enterprise Tenant)</option>
+                <option value="AWS Enterprise">AWS Enterprise (Multi-Account Org)</option>
+                <option value="Google Cloud (GCP)">Google Cloud (GCP)</option>
+                <option value="On-Premises Datacenter">On-Premises Datacenter</option>
+                <option value="Hybrid Multi-Cloud">Hybrid Multi-Cloud</option>
+              </select>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Short Problem Summary *
+              <label className="block font-bold text-slate-700 mb-1">
+                Target Specialist Assignment Group
               </label>
-              <input
-                type="text"
-                required
-                value={shortDescription}
-                onChange={(e) => setShortDescription(e.target.value)}
-                placeholder="Brief one-line summary for rapid notification dispatch"
-                className="w-full text-xs px-3.5 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Detailed Diagnostic Description & Log Extracts *
-              </label>
-              <textarea
-                rows={5}
-                required
-                value={detailedDescription}
-                onChange={(e) => setDetailedDescription(e.target.value)}
-                placeholder="Include error codes, affected IP addresses, interface IDs, symptoms, and troubleshooting steps already attempted..."
-                className="w-full text-xs px-3.5 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-
-            {/* Attachments Section */}
-            <div className="pt-2">
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Diagnostic File Attachments (PCAP, syslog, topology screenshots)
-              </label>
-
-              <div className="flex gap-2 mb-3">
-                <input
-                  type="text"
-                  value={simulatedFile}
-                  onChange={(e) => setSimulatedFile(e.target.value)}
-                  placeholder="Attach file: e.g. firewall_syslog_trace.pcap or switch_log.txt"
-                  className="flex-1 text-xs px-3.5 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-                <button
-                  type="button"
-                  onClick={handleAddAttachment}
-                  className="px-3.5 py-2 rounded-lg bg-slate-800 text-white text-xs font-semibold hover:bg-slate-900 transition-colors"
-                >
-                  Attach File
-                </button>
-              </div>
-
-              {attachments.length > 0 && (
-                <div className="divide-y divide-slate-100 border border-slate-200 rounded-lg overflow-hidden bg-slate-50/50">
-                  {attachments.map((att) => (
-                    <div key={att.id} className="p-2.5 px-3 flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2 truncate">
-                        <FileText className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                        <span className="font-medium text-slate-800 truncate">{att.name}</span>
-                        <span className="text-[10px] text-slate-400 font-mono">({att.size})</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveAttachment(att.id)}
-                        className="text-slate-400 hover:text-rose-600 p-1"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <select
+                value={assignmentGroup}
+                onChange={(e) => setAssignmentGroup(e.target.value as any)}
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+              >
+                <option value="Cloud Operations">Cloud Operations & SRE</option>
+                <option value="Network Infrastructure">Network Infrastructure & BGP</option>
+                <option value="Cyber Security SOC">Cyber Security & Firewall Team</option>
+                <option value="Datacenter Hardware">Datacenter Hardware & Field Tech</option>
+              </select>
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Short Problem Statement <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={shortDescription}
+              onChange={(e) => setShortDescription(e.target.value)}
+              placeholder="e.g. Ingress gateway dropping 30% of incoming TCP packets on Port 443"
+              className="w-full px-3.5 py-2.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Detailed Diagnostic Trace, Error Codes & Repro Steps
+            </label>
+            <textarea
+              rows={5}
+              value={detailedDescription}
+              onChange={(e) => setDetailedDescription(e.target.value)}
+              placeholder="Paste stack traces, syslog lines, traceroute snippets, or error outputs..."
+              className="w-full px-3.5 py-2.5 text-xs font-mono rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Diagnostic Log Attachment Simulation */}
+          <div className="space-y-2">
+            <label className="block text-xs font-bold text-slate-700">
+              Attach Diagnostic Files (pcap, journalctl logs, topology diagram)
+            </label>
+            <div className="flex gap-2 text-xs">
+              <input
+                type="text"
+                value={simulatedFile}
+                onChange={(e) => setSimulatedFile(e.target.value)}
+                placeholder="e.g. gateway_error.log, tcpdump.pcap, firewall_rules.json"
+                className="flex-1 px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              <button
+                type="button"
+                onClick={handleAddAttachment}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white font-semibold rounded-lg shrink-0 cursor-pointer text-xs"
+              >
+                + Add File
+              </button>
+            </div>
+
+            {attachments.length > 0 && (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {attachments.map((att) => (
+                  <div key={att.id} className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 border border-slate-200 rounded-lg text-xs font-mono text-slate-700">
+                    <FileText className="w-3.5 h-3.5 text-blue-600" />
+                    <span>{att.name}</span>
+                    <button type="button" onClick={() => handleRemoveAttachment(att.id)} className="text-slate-400 hover:text-red-600 cursor-pointer ml-1">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Stepper Navigation */}
+          <div className="pt-3 border-t border-slate-100 flex justify-between">
             <button
               type="button"
               onClick={() => setStep(1)}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg border border-slate-300 text-slate-700 font-semibold text-xs hover:bg-slate-50 transition-colors"
+              className="px-4 py-2.5 border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer"
             >
-              <ArrowLeft className="w-4 h-4" />
+              <ArrowLeft className="w-3.5 h-3.5" />
               <span>Back</span>
             </button>
             <button
               type="button"
-              disabled={!shortDescription.trim() || !detailedDescription.trim()}
+              disabled={!shortDescription.trim()}
               onClick={() => setStep(3)}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition-colors disabled:opacity-50"
+              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 shadow-xs"
             >
-              <span>Review & Confirm SLA</span>
-              <ArrowRight className="w-4 h-4" />
+              <span>Next: SLA & Escrow Vault</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
       )}
 
-      {/* STEP 3: Review & Submit */}
+      {/* STEP 3: ITIL SEVERITY MATRIX & ESCROW VAULT GUARANTEE */}
       {step === 3 && (
-        <div className="bg-white p-6 sm:p-8 rounded-xl border border-slate-200 shadow-2xs space-y-6">
-          <h2 className="text-base font-bold text-slate-900">Step 3: Review Incident & Escrow Authorization</h2>
-
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-4 text-xs">
-            <div className="flex items-start justify-between">
-              <div>
-                <span className="text-slate-400 text-[11px] block">Incident Subject</span>
-                <span className="text-sm font-bold text-slate-900 block mt-0.5">{title}</span>
-              </div>
-              <PriorityBadge priority={priority} size="md" />
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 py-2 border-t border-slate-200">
-              <div>
-                <span className="text-slate-400 text-[10px] uppercase font-semibold">Category</span>
-                <span className="text-slate-800 font-medium block mt-0.5">{category}</span>
-              </div>
-              <div>
-                <span className="text-slate-400 text-[10px] uppercase font-semibold">Environment</span>
-                <span className="text-slate-800 font-medium block mt-0.5">{environment}</span>
-              </div>
-              <div>
-                <span className="text-slate-400 text-[10px] uppercase font-semibold">Impact</span>
-                <span className="text-slate-800 font-medium block mt-0.5">{impact}</span>
-              </div>
-              <div>
-                <span className="text-slate-400 text-[10px] uppercase font-semibold">Target SLA</span>
-                <span className="text-slate-800 font-medium block mt-0.5">
-                  {priority === 'CRITICAL' ? '2.0 hrs' : priority === 'HIGH' ? '4.0 hrs' : '12.0 hrs'}
-                </span>
-              </div>
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">
+                Business Impact
+              </label>
+              <select
+                value={impact}
+                onChange={(e) => setImpact(e.target.value as any)}
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+              >
+                <option value="ENTERPRISE">ENTERPRISE - Core Revenue/Data At Risk</option>
+                <option value="HIGH">HIGH - Critical Branch / Cluster Offline</option>
+                <option value="MEDIUM">MEDIUM - Single Workload Impaired</option>
+                <option value="LOW">LOW - Non-blocking Minor Glitch</option>
+              </select>
             </div>
 
             <div>
-              <span className="text-slate-400 text-[10px] uppercase font-semibold">Detailed Problem</span>
-              <p className="text-slate-700 mt-1 leading-relaxed bg-white p-3 rounded-lg border border-slate-200">
-                {detailedDescription}
-              </p>
+              <label className="block font-bold text-slate-700 mb-1">
+                Urgency Level
+              </label>
+              <select
+                value={urgency}
+                onChange={(e) => setUrgency(e.target.value as any)}
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+              >
+                <option value="EMERGENCY">EMERGENCY - Complete Production Halt</option>
+                <option value="HIGH">HIGH - Escalated Immediate Resolution Needed</option>
+                <option value="MEDIUM">MEDIUM - Standard Business Operation SLA</option>
+                <option value="LOW">LOW - Scheduled Maintenance Window</option>
+              </select>
             </div>
           </div>
 
-          {/* Escrow Deposit Summary Card */}
-          <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-xs space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-emerald-950 font-bold">
-                <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                <span>Estimated Escrow Deposit Required:</span>
+          {/* Calculated Priority & SLA Target Banner */}
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <div>
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                Calculated Response Guarantee
+              </span>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="font-mono font-bold text-base text-slate-900">
+                  {ticketType === 'INC' ? 'Incident Priority:' : 'Service Request Priority:'}
+                </span>
+                <PriorityBadge priority={priority} />
               </div>
-              <span className="font-mono text-base font-extrabold text-emerald-900 tabular-nums">
-                ₹{estimatedCost.toLocaleString()}.00
+            </div>
+            <div className="text-right">
+              <span className="text-xs font-bold text-blue-700 block">{getSlaHours()}</span>
+              <span className="text-[10px] text-slate-500 font-mono">15m initial response lock</span>
+            </div>
+          </div>
+
+          {/* Escrow Vault Transparency Box */}
+          <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                <span className="font-bold text-sm">Escrow Vault Deposit Estimate</span>
+              </div>
+              <span className="font-mono text-xl font-bold text-emerald-800">
+                ₹{estimatedCost.toLocaleString('en-IN')}
               </span>
             </div>
-            <p className="text-[11px] text-emerald-800 leading-relaxed">
-              Funds are held securely by TechRescue Escrow. No payout is disbursed to the remote specialist or field engineer until you test and approve the resolution.
+            <p className="text-[11px] text-emerald-800/90 leading-relaxed">
+              100% of funds are securely held in the TechRescue Enterprise Escrow Vault. Funds will NOT be disbursed to the specialist until you verify the resolution in the console.
             </p>
           </div>
 
-          {/* Terms checkbox */}
-          <div className="flex items-start gap-2 pt-2">
+          {/* Confirmation Checkbox */}
+          <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs flex items-start gap-2">
             <input
               type="checkbox"
               id="terms"
               checked={termsAccepted}
               onChange={(e) => setTermsAccepted(e.target.checked)}
-              className="mt-0.5 rounded-sm text-blue-600 focus:ring-blue-500"
+              className="mt-0.5 rounded cursor-pointer"
             />
-            <label htmlFor="terms" className="text-xs text-slate-600 leading-snug">
-              I agree to the TechRescue SLA terms and authorize the temporary escrow hold of ₹{estimatedCost.toLocaleString()}.00 for incident resolution.
+            <label htmlFor="terms" className="text-slate-700 cursor-pointer">
+              I authorize initiating incident dispatch for <strong>{ticketType}-{title || 'Ticket'}</strong> under Enterprise SLA Terms with Escrow Protection.
             </label>
           </div>
 
-          <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+          {/* Stepper Navigation */}
+          <div className="pt-3 border-t border-slate-100 flex justify-between">
             <button
               type="button"
               onClick={() => setStep(2)}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg border border-slate-300 text-slate-700 font-semibold text-xs hover:bg-slate-50 transition-colors"
+              className="px-4 py-2.5 border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer"
             >
-              <ArrowLeft className="w-4 h-4" />
+              <ArrowLeft className="w-3.5 h-3.5" />
               <span>Back</span>
             </button>
             <button
               type="button"
-              disabled={!termsAccepted || isSubmitting}
+              disabled={isSubmitting || !termsAccepted}
               onClick={handleFinalSubmit}
-              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition-colors disabled:opacity-50 shadow-sm"
+              className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer shadow-xs disabled:opacity-50"
             >
               {isSubmitting ? (
-                <span>Generating Ticket & Locking Escrow...</span>
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Committing to Database...</span>
+                </>
               ) : (
                 <>
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Submit Ticket to Expert Pool</span>
+                  <Zap className="w-4 h-4" />
+                  <span>Submit {ticketType} & Fund Escrow</span>
                 </>
               )}
             </button>
