@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { User } from '../../types';
-import { Search, Star, MapPin, Wrench, ShieldCheck, CheckCircle2, Clock } from 'lucide-react';
+import { Search, Star, MapPin, Wrench, ShieldCheck, CheckCircle2, Clock, RotateCcw } from 'lucide-react';
 import { Modal } from '../../components/common/Modal';
 
 export const FieldEngineers: React.FC = () => {
-  const { users } = useAuth();
+  const { users, refreshUsers } = useAuth();
   const { tickets, assignEngineerToTicket } = useData();
 
   const [search, setSearch] = useState('');
@@ -15,6 +15,17 @@ export const FieldEngineers: React.FC = () => {
   const [dispatchModalOpen, setDispatchModalOpen] = useState(false);
   const [targetTicketId, setTargetTicketId] = useState<string>('');
   const [dispatchSuccess, setDispatchSuccess] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  useEffect(() => {
+    handleRefresh();
+  }, []);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refreshUsers();
+    setIsRefreshing(false);
+  };
 
   const engineers = users.filter(u => u.role === 'ENGINEER');
 

@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { User } from '../../types';
-import { Search, Star, MapPin, Award, CheckCircle2, ShieldCheck, Clock, UserCheck } from 'lucide-react';
+import { Search, Star, MapPin, Award, CheckCircle2, ShieldCheck, Clock, UserCheck, RotateCcw } from 'lucide-react';
 import { Modal } from '../../components/common/Modal';
 
 export const AlignExperts: React.FC = () => {
-  const { users } = useAuth();
+  const { users, refreshUsers } = useAuth();
   const { tickets, acceptJobAsExpert } = useData();
 
   const [search, setSearch] = useState('');
@@ -16,6 +16,17 @@ export const AlignExperts: React.FC = () => {
   const [hireModalOpen, setHireModalOpen] = useState(false);
   const [targetTicketId, setTargetTicketId] = useState<string>('');
   const [hireSuccess, setHireSuccess] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  useEffect(() => {
+    handleRefresh();
+  }, []);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refreshUsers();
+    setIsRefreshing(false);
+  };
 
   const experts = users.filter(u => u.role === 'EXPERT');
 
